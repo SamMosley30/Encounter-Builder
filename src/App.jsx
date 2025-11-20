@@ -167,13 +167,13 @@ function App() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-140px)] h-auto">
                 {/* Left Column: Config & Browser */}
-                <div className="lg:col-span-5 flex flex-col gap-6 lg:h-full h-auto lg:overflow-hidden">
+                <div className="lg:col-span-5 flex flex-col gap-6 lg:h-full h-auto lg:overflow-hidden order-2 lg:order-none">
                     <PartyConfig config={partyConfig} onChange={setPartyConfig} />
                     <MonsterBrowser onAddMonster={addMonster} />
                 </div>
 
                 {/* Right Column: Active Encounter */}
-                <div className="lg:col-span-7 bg-gray-800 rounded-lg shadow-lg border border-gray-700 flex flex-col lg:h-full h-[600px] lg:overflow-hidden">
+                <div className="lg:col-span-7 bg-gray-800 rounded-lg shadow-lg border border-gray-700 flex flex-col lg:h-full h-[600px] lg:overflow-hidden order-1 lg:order-none">
                     <div className="p-6 border-b border-gray-700 bg-gray-800/50 backdrop-blur-sm">
                         <div className="flex justify-between items-end mb-4">
                             <div>
