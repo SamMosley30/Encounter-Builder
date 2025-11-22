@@ -1,6 +1,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getAbilityLibrary, calculateStats, saveCustomMonster } from '../lib/monster-utils';
 
+// Helper to format description text (bolding **text**)
+const formatDescription = (text) => {
+    if (!text) return null;
+    return text.split('\n').map((line, i) => (
+        <div key={i} className="mb-1 last:mb-0">
+            {line.split(/(\*\*.*?\*\*)/).map((part, j) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={j} className="text-purple-300 font-bold">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+            })}
+        </div>
+    ));
+};
+
 export default function MonsterCreator({ onSave, initialMonster }) {
     const [monster, setMonster] = useState({
         id: Date.now(),
@@ -19,11 +34,14 @@ export default function MonsterCreator({ onSave, initialMonster }) {
         abilities: []
     });
 
+    // Ability Editor State
+    const [editingAbility, setEditingAbility] = useState(null);
+    const [isNewAbility, setIsNewAbility] = useState(false);
+
     useEffect(() => {
         if (initialMonster) {
             setMonster(initialMonster);
         } else {
-            // Reset if no initial monster (e.g. switching from edit to create new)
             setMonster({
                 id: Date.now(),
                 name: '',
@@ -47,10 +65,7 @@ export default function MonsterCreator({ onSave, initialMonster }) {
 
     const abilityLibrary = useMemo(() => {
         try {
-            console.log("MonsterCreator: Loading ability library...");
-            const lib = getAbilityLibrary();
-            console.log("MonsterCreator: Ability library loaded, count:", lib.length);
-            return lib;
+            return getAbilityLibrary();
         } catch (e) {
             console.error("MonsterCreator: Failed to load ability library", e);
             return [];
@@ -62,7 +77,7 @@ export default function MonsterCreator({ onSave, initialMonster }) {
         return abilityLibrary.filter(a =>
             a.name.toLowerCase().includes(searchAbility.toLowerCase()) ||
             a.type.toLowerCase().includes(searchAbility.toLowerCase())
-        ).slice(0, 20); // Limit results for performance
+        ).slice(0, 20);
     }, [searchAbility, abilityLibrary]);
 
     const handleBasicChange = (field, value) => {
@@ -92,9 +107,12 @@ export default function MonsterCreator({ onSave, initialMonster }) {
     };
 
     const addAbility = (ability) => {
+        // When adding from library, open in editor first? Or just add?
+        // User requested: "When I pull an ability... I should be able to edit it"
+        // Let's add it, then user can click edit.
         setMonster(prev => ({
             ...prev,
-            abilities: [...prev.abilities, { ...ability, id: Date.now() }] // Add unique ID
+            abilities: [...prev.abilities, { ...ability, id: Date.now() }]
         }));
     };
 
@@ -105,6 +123,41 @@ export default function MonsterCreator({ onSave, initialMonster }) {
         }));
     };
 
+    const startCreateAbility = () => {
+        setEditingAbility({
+            id: Date.now(),
+            name: 'New Ability',
+            icon: '⚔️',
+            type: 'Action',
+            keywords: [],
+            distance: '',
+            target: '',
+            description: ''
+        });
+        setIsNewAbility(true);
+    };
+
+    const startEditAbility = (ability, index) => {
+        setEditingAbility({ ...ability, _index: index });
+        setIsNewAbility(false);
+    };
+
+    const saveAbility = () => {
+        if (!editingAbility.name) return alert("Ability name is required");
+
+        setMonster(prev => {
+            const newAbilities = [...prev.abilities];
+            if (isNewAbility) {
+                newAbilities.push({ ...editingAbility, id: Date.now() });
+            } else {
+                newAbilities[editingAbility._index] = { ...editingAbility };
+                delete newAbilities[editingAbility._index]._index; // Clean up temp index
+            }
+            return { ...prev, abilities: newAbilities };
+        });
+        setEditingAbility(null);
+    };
+
     const handleSave = () => {
         if (!monster.name) return alert("Please give your monster a name!");
         saveCustomMonster(monster);
@@ -113,7 +166,7 @@ export default function MonsterCreator({ onSave, initialMonster }) {
     };
 
     return (
-        <div className="h-full flex flex-col gap-6">
+        <div className="h-full flex flex-col gap-6 relative">
             <header>
                 <h2 className="text-2xl font-bold text-white">Monster Creator</h2>
                 <p className="text-gray-400 text-sm">Forge new threats for your heroes.</p>
@@ -244,26 +297,65 @@ export default function MonsterCreator({ onSave, initialMonster }) {
 
                     {/* Current Abilities */}
                     <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 space-y-4">
-                        <h3 className="text-lg font-bold text-purple-400 border-b border-gray-700 pb-2">Abilities</h3>
+                        <div className="flex justify-between items-center border-b border-gray-700 pb-2">
+                            <h3 className="text-lg font-bold text-purple-400">Abilities</h3>
+                            <button
+                                onClick={startCreateAbility}
+                                className="text-xs bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded transition-colors"
+                            >
+                                + New Ability
+                            </button>
+                        </div>
+
                         {monster.abilities.length === 0 ? (
                             <p className="text-gray-500 italic text-sm">No abilities added yet.</p>
                         ) : (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                                 {monster.abilities.map((ability, idx) => (
-                                    <div key={idx} className="bg-gray-700 p-3 rounded flex justify-between items-start group">
-                                        <div>
-                                            <div className="font-bold text-white flex items-center gap-2">
+                                    <div key={idx} className="bg-gray-700/50 border border-gray-600 p-3 rounded-lg group relative hover:bg-gray-700 transition-colors">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className="flex items-center gap-2 font-bold text-purple-300">
                                                 <span>{ability.icon}</span>
-                                                {ability.name}
+                                                <span>{ability.name}</span>
+                                                {ability.type && <span className="text-xs text-gray-500 uppercase tracking-wider">[{ability.type}]</span>}
                                             </div>
-                                            <div className="text-xs text-gray-400 mt-1 line-clamp-2">{ability.description}</div>
+                                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => startEditAbility(ability, idx)}
+                                                    className="text-gray-400 hover:text-blue-400"
+                                                    title="Edit"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => removeAbility(idx)}
+                                                    className="text-gray-400 hover:text-red-400"
+                                                    title="Remove"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
                                         </div>
-                                        <button
-                                            onClick={() => removeAbility(idx)}
-                                            className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        >
-                                            ✕
-                                        </button>
+
+                                        {/* Ability Details */}
+                                        <div className="text-xs text-gray-300 space-y-1">
+                                            {(ability.keywords?.length > 0 || ability.distance || ability.target) && (
+                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-400 mb-1">
+                                                    {ability.keywords?.length > 0 && (
+                                                        <span><span className="text-gray-500">Keywords:</span> {Array.isArray(ability.keywords) ? ability.keywords.join(', ') : ability.keywords}</span>
+                                                    )}
+                                                    {ability.distance && (
+                                                        <span><span className="text-gray-500">Dist:</span> {ability.distance}</span>
+                                                    )}
+                                                    {ability.target && (
+                                                        <span><span className="text-gray-500">Tgt:</span> {ability.target}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <div className="text-gray-300 leading-relaxed">
+                                                {formatDescription(ability.description)}
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -321,6 +413,124 @@ export default function MonsterCreator({ onSave, initialMonster }) {
                     </div>
                 </div>
             </div>
+
+            {/* Ability Editor Modal */}
+            {editingAbility && (
+                <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl w-full max-w-2xl flex flex-col max-h-full">
+                        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-white">
+                                {isNewAbility ? 'Create Ability' : 'Edit Ability'}
+                            </h3>
+                            <button
+                                onClick={() => setEditingAbility(null)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-4 custom-scrollbar">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Name</label>
+                                    <input
+                                        type="text"
+                                        value={editingAbility.name}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, name: e.target.value })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Icon (Emoji)</label>
+                                    <input
+                                        type="text"
+                                        value={editingAbility.icon || ''}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, icon: e.target.value })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                        placeholder="⚔️"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Type</label>
+                                    <select
+                                        value={editingAbility.type || 'Action'}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, type: e.target.value })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                    >
+                                        <option value="Action">Action</option>
+                                        <option value="Maneuver">Maneuver</option>
+                                        <option value="Triggered">Triggered</option>
+                                        <option value="Trait">Trait</option>
+                                        <option value="Signature">Signature</option>
+                                        <option value="Villain">Villain</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Keywords (comma separated)</label>
+                                    <input
+                                        type="text"
+                                        value={Array.isArray(editingAbility.keywords) ? editingAbility.keywords.join(', ') : editingAbility.keywords || ''}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, keywords: e.target.value.split(',').map(s => s.trim()) })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Distance</label>
+                                    <input
+                                        type="text"
+                                        value={editingAbility.distance || ''}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, distance: e.target.value })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                        placeholder="e.g. Melee 1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">Target</label>
+                                    <input
+                                        type="text"
+                                        value={editingAbility.target || ''}
+                                        onChange={(e) => setEditingAbility({ ...editingAbility, target: e.target.value })}
+                                        className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none"
+                                        placeholder="e.g. One creature"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs text-gray-500 mb-1">Description (Supports **bold**)</label>
+                                <textarea
+                                    value={editingAbility.description || ''}
+                                    onChange={(e) => setEditingAbility({ ...editingAbility, description: e.target.value })}
+                                    className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none h-32 resize-none"
+                                    placeholder="Describe the ability..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-700 flex justify-end gap-2">
+                            <button
+                                onClick={() => setEditingAbility(null)}
+                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={saveAbility}
+                                className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium transition-colors"
+                            >
+                                {isNewAbility ? 'Create Ability' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
