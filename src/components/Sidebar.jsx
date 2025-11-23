@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Sidebar({ activeView, onNavigate }) {
+export default function Sidebar({ activeView, onNavigate, onOpenSettings }) {
     const navItems = [
         { id: 'builder', label: 'Encounter Builder', icon: '⚔️' },
         { id: 'creator', label: 'Monster Creator', icon: '🐉' },
@@ -21,8 +21,8 @@ export default function Sidebar({ activeView, onNavigate }) {
                         key={item.id}
                         onClick={() => onNavigate(item.id)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${activeView === item.id
-                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20'
-                                : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20'
+                            : 'text-gray-400 hover:bg-gray-700 hover:text-gray-200'
                             }`}
                     >
                         <span className="text-xl">{item.icon}</span>
@@ -31,8 +31,18 @@ export default function Sidebar({ activeView, onNavigate }) {
                 ))}
             </nav>
 
-            <div className="p-4 border-t border-gray-700 text-center text-xs text-gray-600">
+            <div className="p-4 border-t border-gray-700 text-center text-xs text-gray-600 mb-2">
                 Draw Steel Encounter Builder
+            </div>
+
+            <div className="p-4 border-t border-gray-700">
+                <button
+                    onClick={onOpenSettings}
+                    className="flex items-center gap-3 text-gray-400 hover:text-white hover:bg-gray-800 p-2 rounded transition-colors w-full"
+                >
+                    <span>⚙️</span>
+                    <span className="font-medium">Settings</span>
+                </button>
             </div>
         </div>
     );

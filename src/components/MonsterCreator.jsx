@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { getAbilityLibrary, calculateStats, saveCustomMonster } from '../lib/monster-utils';
+import { generateMonster } from '../lib/gemini-service';
 
 // Helper to format description text (bolding **text**)
 const formatDescription = (text) => {
@@ -16,7 +17,7 @@ const formatDescription = (text) => {
     ));
 };
 
-export default function MonsterCreator({ onSave, initialMonster }) {
+export default function MonsterCreator({ onSave, initialMonster, apiKey, onOpenSettings }) {
     const [monster, setMonster] = useState({
         id: Date.now(),
         name: '',
@@ -37,6 +38,12 @@ export default function MonsterCreator({ onSave, initialMonster }) {
     // Ability Editor State
     const [editingAbility, setEditingAbility] = useState(null);
     const [isNewAbility, setIsNewAbility] = useState(false);
+
+    // AI Generation State
+    const [showAiModal, setShowAiModal] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiError, setAiError] = useState(null);
 
     useEffect(() => {
         if (initialMonster) {
@@ -165,11 +172,53 @@ export default function MonsterCreator({ onSave, initialMonster }) {
         alert("Monster Saved!");
     };
 
+    const handleAiGenerate = async () => {
+        if (!apiKey) {
+            alert("Please enter your Gemini API Key in Settings first.");
+            onOpenSettings();
+            return;
+        }
+        if (!aiPrompt.trim()) return;
+
+        setIsGenerating(true);
+        setAiError(null);
+
+        try {
+            const generatedData = await generateMonster(apiKey, aiPrompt);
+
+            // Merge with default structure to ensure safety
+            const newMonster = {
+                ...monster,
+                ...generatedData,
+                id: Date.now(),
+                stats: { ...monster.stats, ...generatedData.stats },
+                abilities: generatedData.abilities.map(a => ({ ...a, id: Date.now() + Math.random() }))
+            };
+
+            setMonster(newMonster);
+            setShowAiModal(false);
+            setAiPrompt('');
+        } catch (err) {
+            console.error("Generation failed:", err);
+            setAiError(err.message || "Failed to generate monster. Please try again.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     return (
         <div className="h-full flex flex-col gap-6 relative">
-            <header>
-                <h2 className="text-2xl font-bold text-white">Monster Creator</h2>
-                <p className="text-gray-400 text-sm">Forge new threats for your heroes.</p>
+            <header className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">Monster Creator</h2>
+                    <p className="text-gray-400 text-sm">Forge new threats for your heroes.</p>
+                </div>
+                <button
+                    onClick={() => setShowAiModal(true)}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition-all"
+                >
+                    <span>✨</span> Generate with AI
+                </button>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
@@ -526,6 +575,63 @@ export default function MonsterCreator({ onSave, initialMonster }) {
                                 className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded font-medium transition-colors"
                             >
                                 {isNewAbility ? 'Create Ability' : 'Save Changes'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Generation Modal */}
+            {showAiModal && (
+                <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                                Generate with Gemini AI
+                            </h3>
+                            <button
+                                onClick={() => setShowAiModal(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm text-gray-400 mb-2">Describe your monster:</label>
+                            <textarea
+                                value={aiPrompt}
+                                onChange={(e) => setAiPrompt(e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-500 outline-none h-32 resize-none"
+                                placeholder="e.g. A cybernetic zombie dragon breathing neon fire..."
+                            />
+                            {aiError && (
+                                <p className="text-red-400 text-xs mt-2">{aiError}</p>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => setShowAiModal(false)}
+                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                                disabled={isGenerating}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleAiGenerate}
+                                disabled={isGenerating || !aiPrompt.trim()}
+                                className={`px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded font-medium transition-all flex items-center gap-2 ${isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:from-blue-500 hover:to-purple-500'}`}
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <span className="animate-spin">✨</span> Generating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>✨</span> Generate
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
