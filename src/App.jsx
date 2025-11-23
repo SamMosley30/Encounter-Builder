@@ -56,19 +56,23 @@ function App() {
     };
 
     return (
-        <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden relative">
-            <Sidebar
-                activeView={activeView}
-                onNavigate={handleNavigate}
-                onOpenSettings={() => setShowSettings(true)}
-            />
+        <div className="flex h-screen bg-gray-900 text-white font-sans overflow-hidden relative print:block print:h-auto print:overflow-visible">
+            <div className="print:hidden h-full">
+                <Sidebar
+                    activeView={activeView}
+                    onNavigate={handleNavigate}
+                    onOpenSettings={() => setShowSettings(true)}
+                />
+            </div>
 
-            <main className="flex-1 h-full overflow-hidden p-6">
+            <main className="flex-1 h-full overflow-hidden p-6 print:w-full print:h-auto print:overflow-visible print:p-0">
                 {activeView === 'builder' && (
                     <EncounterBuilder
                         customMonsters={customMonsters}
                         onClone={handleClone}
                         onEdit={handleEdit}
+                        apiKey={apiKey}
+                        onOpenSettings={() => setShowSettings(true)}
                     />
                 )}
                 {activeView === 'creator' && (

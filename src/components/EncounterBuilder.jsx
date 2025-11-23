@@ -100,7 +100,12 @@ const MonsterCard = ({ monster, onRemove }) => {
     );
 };
 
-export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
+import { generateTactics } from '../lib/gemini-service';
+import ReactMarkdown from 'react-markdown';
+
+// ... (keep existing imports)
+
+export default function EncounterBuilder({ customMonsters, onClone, onEdit, apiKey, onOpenSettings }) {
     const [partyConfig, setPartyConfig] = useState({
         level: 1,
         count: 4,
@@ -109,6 +114,12 @@ export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
 
     const [encounterMonsters, setEncounterMonsters] = useState([]);
     const [showPrintView, setShowPrintView] = useState(false);
+
+    // Tactics State
+    const [showTacticsModal, setShowTacticsModal] = useState(false);
+    const [tacticsContent, setTacticsContent] = useState('');
+    const [isGeneratingTactics, setIsGeneratingTactics] = useState(false);
+    const [tacticsError, setTacticsError] = useState(null);
 
     const partyES = calculatePartyES(partyConfig.level, partyConfig.count, partyConfig.victories);
 
@@ -125,6 +136,28 @@ export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
         setEncounterMonsters(encounterMonsters.filter(m => m.id !== id));
     };
 
+    const handleGenerateTactics = async () => {
+        if (!apiKey) {
+            alert("Please enter your Gemini API Key in Settings first.");
+            onOpenSettings();
+            return;
+        }
+
+        setIsGeneratingTactics(true);
+        setTacticsError(null);
+        setShowTacticsModal(true);
+
+        try {
+            const tactics = await generateTactics(apiKey, encounterMonsters);
+            setTacticsContent(tactics);
+        } catch (err) {
+            console.error("Tactics generation failed:", err);
+            setTacticsError(err.message || "Failed to generate tactics.");
+        } finally {
+            setIsGeneratingTactics(false);
+        }
+    };
+
     const getDifficultyColor = (diff) => {
         switch (diff) {
             case DIFFICULTY_LEVELS.TRIVIAL: return 'text-gray-400';
@@ -138,19 +171,22 @@ export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
 
     if (showPrintView) {
         return (
-            <PrintView
-                encounterMonsters={encounterMonsters}
-                partyES={partyES}
-                totalEV={totalEV}
-                difficulty={difficulty}
-                partyCount={partyConfig.count}
-                onBack={() => setShowPrintView(false)}
-            />
+            <div className="h-full overflow-y-auto bg-white custom-scrollbar">
+                <PrintView
+                    encounterMonsters={encounterMonsters}
+                    partyES={partyES}
+                    totalEV={totalEV}
+                    difficulty={difficulty}
+                    partyCount={partyConfig.count}
+                    tactics={tacticsContent}
+                    onBack={() => setShowPrintView(false)}
+                />
+            </div>
         );
     }
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col relative">
             <header className="mb-6 flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-white">Encounter Builder</h2>
@@ -180,16 +216,25 @@ export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
                         <div className="flex justify-between items-end mb-4">
                             <div>
                                 <h2 className="text-xl font-bold text-purple-400">Active Encounter</h2>
-                                <button
-                                    onClick={() => setShowPrintView(true)}
-                                    className="mt-2 text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded flex items-center gap-1 transition-colors"
-                                    disabled={encounterMonsters.length === 0}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                    Print / Export
-                                </button>
+                                <div className="flex gap-2 mt-2">
+                                    <button
+                                        onClick={() => setShowPrintView(true)}
+                                        className="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded flex items-center gap-1 transition-colors"
+                                        disabled={encounterMonsters.length === 0}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                        Print / Export
+                                    </button>
+                                    <button
+                                        onClick={handleGenerateTactics}
+                                        className="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-3 py-1 rounded flex items-center gap-1 transition-colors shadow-lg"
+                                        disabled={encounterMonsters.length === 0}
+                                    >
+                                        <span>🧠</span> Generate Tactics
+                                    </button>
+                                </div>
                             </div>
                             <div className="text-right">
                                 <div className={`text-3xl font-black ${getDifficultyColor(difficulty)}`}>
@@ -230,6 +275,47 @@ export default function EncounterBuilder({ customMonsters, onClone, onEdit }) {
                     </div>
                 </div>
             </div>
+
+            {/* Tactics Modal */}
+            {showTacticsModal && (
+                <div className="absolute inset-0 bg-gray-900/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 border border-gray-600 rounded-lg shadow-2xl w-full max-w-2xl p-6 flex flex-col max-h-[80vh]">
+                        <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <span>🧠</span> Encounter Tactics
+                            </h3>
+                            <button onClick={() => setShowTacticsModal(false)} className="text-gray-400 hover:text-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                            {isGeneratingTactics ? (
+                                <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-4">
+                                    <div className="animate-spin text-4xl">🧠</div>
+                                    <p>Analyzing encounter synergy...</p>
+                                </div>
+                            ) : tacticsError ? (
+                                <div className="text-red-400 text-center p-4">
+                                    <p>{tacticsError}</p>
+                                    <button
+                                        onClick={handleGenerateTactics}
+                                        className="mt-4 px-4 py-2 bg-red-900/50 hover:bg-red-900/80 rounded text-red-200 transition-colors"
+                                    >
+                                        Try Again
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="prose prose-invert prose-sm max-w-none">
+                                    <ReactMarkdown>{tacticsContent}</ReactMarkdown>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

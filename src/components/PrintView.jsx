@@ -1,6 +1,7 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
-const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount, onBack }) => {
+const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount, tactics, onBack }) => {
     // Deduplicate monsters for statblock display
     const uniqueMonsters = Array.from(new Set(encounterMonsters.map(m => m.name)))
         .map(name => encounterMonsters.find(m => m.name === name));
@@ -9,16 +10,16 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
     const sortedMonsters = [...encounterMonsters].sort((a, b) => a.name.localeCompare(b.name));
 
     return (
-        <div className="min-h-screen bg-white text-black p-8 font-serif print:p-0">
+        <div className="min-h-screen bg-white text-black p-8 font-serif print:p-0 max-w-5xl mx-auto">
             {/* No-Print Controls */}
-            <div className="print:hidden mb-8 flex justify-between items-center bg-gray-100 p-4 rounded border border-gray-300">
+            <div className="print:hidden mb-8 flex justify-between items-center bg-gray-100 p-4 rounded border border-gray-300 shadow-sm">
                 <div>
                     <h2 className="font-bold text-lg">Print Preview</h2>
                     <p className="text-sm text-gray-600">Use your browser's print function (Ctrl+P / Cmd+P).</p>
                 </div>
                 <button
                     onClick={onBack}
-                    className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700"
+                    className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
                 >
                     Back to Builder
                 </button>
@@ -27,13 +28,11 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
             {/* Header Info */}
             <div className="flex justify-between items-end border-b-2 border-black pb-2 mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold uppercase tracking-tight">Encounter Plan</h1>
-                    <div className="text-xs mt-1">
-                        <span className="font-bold mr-2">Difficulty:</span> {difficulty.toUpperCase()}
-                        <span className="mx-2">|</span>
-                        <span className="font-bold mr-2">Total EV:</span> {totalEV}
-                        <span className="mx-2">|</span>
-                        <span className="font-bold mr-2">Party ES:</span> {partyES}
+                    <h1 className="text-3xl font-bold uppercase tracking-tight">Encounter Plan</h1>
+                    <div className="text-sm mt-1 flex gap-4">
+                        <span><span className="font-bold">Difficulty:</span> {difficulty.toUpperCase()}</span>
+                        <span><span className="font-bold">Total EV:</span> {totalEV}</span>
+                        <span><span className="font-bold">Party ES:</span> {partyES}</span>
                     </div>
                 </div>
                 <div className="text-right text-[10px] text-gray-500">
@@ -41,40 +40,50 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
                 </div>
             </div>
 
+            {/* Tactics Section (New) */}
+            {tactics && (
+                <div className="mb-4 border border-gray-300 p-2 rounded bg-gray-50 print:border-black print:bg-transparent break-inside-avoid">
+                    <h3 className="font-bold text-sm border-b border-gray-300 mb-1 pb-0.5">Tactical Overview</h3>
+                    <div className="prose prose-sm max-w-none prose-p:my-0.5 prose-ul:my-0.5 prose-li:my-0 text-[10px] leading-tight">
+                        <ReactMarkdown>{tactics}</ReactMarkdown>
+                    </div>
+                </div>
+            )}
+
             {/* Trackers Section */}
-            <div className="grid grid-cols-12 gap-4 mb-6">
+            <div className="flex gap-4 mb-4 break-inside-avoid">
                 {/* Initiative / Condition Tracker */}
-                <div className="col-span-8">
-                    <h3 className="font-bold text-sm border-b border-black mb-1">Initiative & Condition Tracker</h3>
-                    <table className="w-full text-xs text-left border-collapse">
+                <div className="flex-grow">
+                    <h3 className="font-bold text-xs border-b border-black mb-1">Initiative & Condition Tracker</h3>
+                    <table className="w-full text-[9px] text-left border-collapse border border-gray-300">
                         <thead>
-                            <tr className="border-b border-gray-400">
-                                <th className="py-1 w-8 text-center border-r border-gray-300">Init</th>
-                                <th className="py-1 pl-2 w-1/3 border-r border-gray-300">Name</th>
-                                <th className="py-1 px-2 w-12 text-center border-r border-gray-300">Max HP</th>
-                                <th className="py-1 px-2 w-16 border-r border-gray-300">Cur HP</th>
-                                <th className="py-1 pl-2">Conditions / Notes</th>
+                            <tr className="bg-gray-100 print:bg-transparent">
+                                <th className="py-0.5 px-1 w-6 text-center border border-gray-300">Init</th>
+                                <th className="py-0.5 px-1 w-1/4 border border-gray-300">Name</th>
+                                <th className="py-0.5 px-1 w-8 text-center border border-gray-300">HP</th>
+                                <th className="py-0.5 px-1 w-8 border border-gray-300">Cur</th>
+                                <th className="py-0.5 px-1 border border-gray-300">Conditions / Notes</th>
                             </tr>
                         </thead>
                         <tbody>
                             {/* Rows for Monsters */}
                             {sortedMonsters.map((monster, i) => (
                                 <tr key={monster.id} className="border-b border-gray-200">
-                                    <td className="py-2 border-r border-gray-300"></td>
-                                    <td className="py-2 pl-2 font-semibold border-r border-gray-300">{monster.name}</td>
-                                    <td className="py-2 text-center border-r border-gray-300">{monster.stats.stamina}</td>
-                                    <td className="py-2 border-r border-gray-300"></td>
-                                    <td className="py-2"></td>
+                                    <td className="py-1 border border-gray-300"></td>
+                                    <td className="py-1 px-1 font-semibold border border-gray-300 truncate max-w-[100px]">{monster.name}</td>
+                                    <td className="py-1 text-center border border-gray-300">{monster.stats.stamina}</td>
+                                    <td className="py-1 border border-gray-300"></td>
+                                    <td className="py-1 border border-gray-300"></td>
                                 </tr>
                             ))}
                             {/* Dynamic rows for Heroes */}
                             {Array.from({ length: partyCount }).map((_, i) => (
-                                <tr key={`hero-${i}`} className="border-b border-gray-200 bg-gray-50">
-                                    <td className="py-3 border-r border-gray-300"></td>
-                                    <td className="py-3 pl-2 text-gray-500 italic border-r border-gray-300"></td>
-                                    <td className="py-3 border-r border-gray-300"></td>
-                                    <td className="py-3 border-r border-gray-300"></td>
-                                    <td className="py-3"></td>
+                                <tr key={`hero-${i}`} className="border-b border-gray-200 bg-gray-50 print:bg-transparent">
+                                    <td className="py-1.5 border border-gray-300"></td>
+                                    <td className="py-1.5 px-1 text-gray-500 italic border border-gray-300">Hero {i + 1}</td>
+                                    <td className="py-1.5 border border-gray-300"></td>
+                                    <td className="py-1.5 border border-gray-300"></td>
+                                    <td className="py-1.5 border border-gray-300"></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -82,20 +91,20 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
                 </div>
 
                 {/* Malice Tracker */}
-                <div className="col-span-4">
-                    <h3 className="font-bold text-sm border-b border-black mb-1">Malice Tracker</h3>
-                    <table className="w-full text-xs border-collapse">
+                <div className="w-32 flex-shrink-0">
+                    <h3 className="font-bold text-xs border-b border-black mb-1">Malice Tracker</h3>
+                    <table className="w-full text-[9px] border-collapse border border-gray-300">
                         <thead>
-                            <tr className="border-b border-gray-400">
-                                <th className="py-1 text-left w-12">Round</th>
-                                <th className="py-1 text-left pl-2">Malice Earned / Spent</th>
+                            <tr className="bg-gray-100 print:bg-transparent">
+                                <th className="py-0.5 px-1 text-left w-6 border border-gray-300">Rd</th>
+                                <th className="py-0.5 px-1 text-left border border-gray-300">Malice</th>
                             </tr>
                         </thead>
                         <tbody>
                             {[1, 2, 3, 4, 5, 6].map(round => (
                                 <tr key={round} className="border-b border-gray-200">
-                                    <td className="py-3 font-bold align-top">Rd {round}</td>
-                                    <td className="py-3 border-l border-gray-300"></td>
+                                    <td className="py-1.5 px-1 font-bold align-top border border-gray-300">{round}</td>
+                                    <td className="py-1.5 border border-gray-300"></td>
                                 </tr>
                             ))}
                         </tbody>
@@ -105,64 +114,60 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
 
             {/* Statblocks Section */}
             <div>
-                <h3 className="font-bold text-sm border-b border-black mb-2">Statblocks</h3>
-
                 {/* CSS Columns Layout for better print flow */}
-                <div className="columns-1 md:columns-2 gap-4 space-y-4">
+                <div className="columns-1 md:columns-2 gap-4 space-y-4 print:block">
                     {uniqueMonsters.map((monster) => {
-                        // "Smart" Layout Logic:
-                        // If a monster is a "Solo" or "Leader", or has many abilities, it's "Complex".
-                        // Complex monsters span the full width (breaking the columns), and their abilities are split into 2 columns.
-                        const isComplex = monster.role === 'Solo' || monster.role === 'Leader' || monster.abilities.length > 6;
+                        const isComplex = monster.role === 'Solo' || monster.role === 'Leader' || monster.abilities.length > 5;
 
                         return (
                             <div
                                 key={monster.name}
-                                className={`border border-black p-2 break-inside-avoid text-xs ${isComplex ? 'column-span-all w-full mb-4' : 'mb-4'}`}
+                                className={`border border-black p-1.5 break-inside-avoid text-[9px] bg-white ${isComplex ? 'column-span-all w-full mb-2' : 'mb-2'} print:mb-2 shadow-sm`}
+                                style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}
                             >
                                 {/* Header */}
-                                <div className="flex justify-between items-baseline border-b border-black pb-0.5 mb-1">
-                                    <h4 className="font-bold text-sm">{monster.name}</h4>
-                                    <span className="font-semibold">Lvl {monster.level} {monster.role}</span>
+                                <div className="flex justify-between items-baseline border-b border-black pb-0.5 mb-1 bg-gray-100 print:bg-transparent px-1">
+                                    <h4 className="font-bold text-xs">{monster.name}</h4>
+                                    <span className="font-semibold text-[8px]">Lvl {monster.level} {monster.role}</span>
                                 </div>
 
                                 {/* Stats Grid */}
-                                <div className="grid grid-cols-5 gap-1 text-center mb-2 bg-gray-100 p-0.5 rounded">
+                                <div className="grid grid-cols-5 gap-px text-center mb-1.5 border-b border-black pb-1">
                                     <div>
-                                        <div className="font-bold text-[10px] uppercase">Size</div>
-                                        <div>{monster.stats.size}</div>
+                                        <div className="font-bold text-[8px] uppercase text-gray-600">Size</div>
+                                        <div className="font-bold">{monster.stats.size}</div>
                                     </div>
                                     <div>
-                                        <div className="font-bold text-[10px] uppercase">Speed</div>
-                                        <div>{monster.stats.speed}</div>
+                                        <div className="font-bold text-[8px] uppercase text-gray-600">Speed</div>
+                                        <div className="font-bold">{monster.stats.speed}</div>
                                     </div>
                                     <div>
-                                        <div className="font-bold text-[10px] uppercase">Stamina</div>
-                                        <div>{monster.stats.stamina}</div>
+                                        <div className="font-bold text-[8px] uppercase text-gray-600">Stamina</div>
+                                        <div className="font-bold">{monster.stats.stamina}</div>
                                     </div>
                                     <div>
-                                        <div className="font-bold text-[10px] uppercase">Stability</div>
-                                        <div>{monster.stats.stability}</div>
+                                        <div className="font-bold text-[8px] uppercase text-gray-600">Stability</div>
+                                        <div className="font-bold">{monster.stats.stability}</div>
                                     </div>
                                     <div>
-                                        <div className="font-bold text-[10px] uppercase">Free Strike</div>
-                                        <div>{monster.stats.freeStrike}</div>
+                                        <div className="font-bold text-[8px] uppercase text-gray-600">Free Strike</div>
+                                        <div className="font-bold">{monster.stats.freeStrike}</div>
                                     </div>
                                 </div>
 
                                 {/* Abilities */}
-                                <div className={isComplex ? 'columns-2 gap-4 space-y-2' : 'space-y-2'}>
+                                <div className={isComplex ? 'columns-2 gap-2 space-y-1' : 'space-y-1.5'}>
                                     {monster.abilities.map((ability, i) => (
-                                        <div key={i} className="break-inside-avoid mb-2">
-                                            <div className="font-bold flex items-center gap-1">
+                                        <div key={i} className="break-inside-avoid" style={{ pageBreakInside: 'avoid' }}>
+                                            <div className="font-bold flex items-center gap-1 text-[10px]">
                                                 <span>{ability.icon}</span>
                                                 <span>{ability.name}</span>
-                                                {ability.type && <span className="text-[10px] font-normal text-gray-600 ml-1">[{ability.type}]</span>}
+                                                {ability.type && <span className="text-[8px] font-normal text-gray-600 uppercase tracking-wider ml-1">[{ability.type}]</span>}
                                             </div>
 
                                             {/* Keywords/Distance/Target Line */}
                                             {(ability.keywords?.length > 0 || ability.distance || ability.target) && (
-                                                <div className="text-[10px] text-gray-600 mb-0.5 italic">
+                                                <div className="text-[8px] text-gray-600 mb-0.5 font-medium leading-none">
                                                     {[
                                                         ability.keywords?.join(', '),
                                                         ability.distance && `Dist: ${ability.distance}`,
@@ -171,7 +176,7 @@ const PrintView = ({ encounterMonsters, partyES, totalEV, difficulty, partyCount
                                                 </div>
                                             )}
 
-                                            <div className="text-gray-900 whitespace-pre-wrap leading-tight">
+                                            <div className="text-gray-900 whitespace-pre-wrap leading-tight mt-0.5">
                                                 {/* Simple markdown stripping/formatting for print */}
                                                 {ability.description?.split('\n').map((line, j) => (
                                                     <div key={j} className="mb-0.5">

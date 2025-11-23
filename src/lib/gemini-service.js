@@ -73,3 +73,51 @@ export async function generateMonster(apiKey, prompt) {
         throw new Error("Gemini returned invalid JSON");
     }
 }
+
+const TACTICS_SYSTEM_PROMPT = `
+You are a tactical advisor for a TTRPG Game Master. Your task is to analyze a group of monsters and provide a "Tactics" overview for an encounter.
+Analyze the provided monsters (names, roles, stats, abilities) and generate a Markdown summary that includes:
+1. **Synergies:** How the monsters work together.
+2. **Target Priority:** Who the monsters should target (e.g., squishy casters, tanks).
+3. **Opening Moves:** What the monsters should do in the first round.
+4. **Defensive Tactics:** How they protect themselves or their leader.
+
+IMPORTANT:
+- Return ONLY the Markdown text.
+- Be concise and actionable.
+- Use bullet points.
+`;
+
+export async function generateTactics(apiKey, monsters) {
+    if (!apiKey) throw new Error("API Key is missing");
+
+    const monsterSummaries = monsters.map(m => `
+Name: ${m.name}
+Role: ${m.role}
+Level: ${m.level}
+Stats: HP ${m.stats.stamina}, AC ${m.stats.stability}, Speed ${m.stats.speed}
+Abilities: ${m.abilities.map(a => a.name + " (" + a.type + ")").join(", ")}
+    `).join("\n---\n");
+
+    const prompt = `Analyze this encounter group:\n${monsterSummaries}`;
+
+    const response = await fetch(`${API_URL}?key=${apiKey}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            contents: [{
+                parts: [{ text: TACTICS_SYSTEM_PROMPT + "\n\n" + prompt }]
+            }]
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error?.message || "Failed to generate tactics");
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+}
